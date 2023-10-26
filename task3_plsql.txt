@@ -1,0 +1,92 @@
+Выполнил: Жиркова Туяра 04.10.23
+
+
+
+Задание №3.
+ 
+В базе данных имеется таблица с данными из приложенного client_acc.xls. 
+ 
+В данной таблице содержатся ФИО и наименования счетов клиентов. 
+В следствие, того, что операторы базы данных после изменений клиентами их фамилий не переименовывали их счета или перепечатывали их вручную с ошибками появились расхождения в данных.
+ 
+Необходимо в поле «Наименование счета» выделить ФИО клиента (с несовпадающей фамилией фамилией) и вставить вместо него Фамилию И. О.  из поля «ФИО».
+ 
+В результате работы программы, должно получиться, например, для первого клиента: «Просроченные % Николаева В.М.»
+ 
+(Вместо: «Просроченные % Жирковой В.М.»)
+ 
+Использовать регулярные выражения…
+ 
+При решении задач использовать язык программирования PL SQL.
+
+
+
+--Создание таблицы client в базе данных на Oracle SQL Developer
+
+CREATE TABLE client (id_client NUMBER NOT NULL,
+                     fio VARCHAR2(100),
+                     account_name VARCHAR2(150),
+                     PRIMARY KEY (id_client)
+                     )
+
+
+--Заполнение таблицы данными
+
+INSERT INTO CLIENT VALUES(1,'Николаева Валерия Матвеевна', 'Просроченные % Жирковой В.М.');
+INSERT INTO CLIENT VALUES(2,'Бобров Геннадий Куприянович', 'Просроч. % Боброва Г. К.');
+INSERT INTO CLIENT VALUES(3,'Турова Венера Мстиславовна', 'П/отчет Туровой Венеры Мстиславовны');
+INSERT INTO CLIENT VALUES(4,'Блохин Демьян Лаврентьевич', 'П/отчет Блохин Д. Л. на команд.расх.');
+INSERT INTO CLIENT VALUES(5,'Соколов Пётр Макарович', 'П/отчет Соколов Петр Макарович на командир.расходы');
+INSERT INTO CLIENT VALUES(6,'Силина Ангелина Витальевна', 'П/отчет Силина Ангелина Витальевна');
+INSERT INTO CLIENT VALUES(7,'Титов Ефим Андреевич', 'Расчеты с Титовым Е. А.');
+INSERT INTO CLIENT VALUES(8,'Турова Лукия Валерьевна', 'Проезд Эверстовой Л.В.');
+INSERT INTO CLIENT VALUES(9,'Ермакова Венера Якововна	', 'Проезд в отпуск Ермакова Венера Якововлевна');
+INSERT INTO CLIENT VALUES(10,'Тетерин Владимир Русланович', 'ДБП по соглашению с Тетерин ВР');
+INSERT INTO CLIENT VALUES(11,'Комаров Николай Федосеевич', 'РВПС по просрочке Комаров Н. Ф.');
+INSERT INTO CLIENT VALUES(12,'Симонова Галина Игоревна', 'П/отчет Сафоновой Г.И');
+INSERT INTO CLIENT VALUES(13,'Миронова Вера Игоревна', 'П/отчет Кривцовой В.И,');
+INSERT INTO CLIENT VALUES(14,'Соколова Анжела Борисовна', 'П/отчет Румянцевой А.Б');
+INSERT INTO CLIENT VALUES(15,'Моисеева Валентина Агафоновна', 'П/отчет Моисеева В А');
+INSERT INTO CLIENT VALUES(16,'Богданов Роман Денисович', 'П/отчет Богданов Р Д на командировочные расходы');
+INSERT INTO CLIENT VALUES(17,'Исаева Евгения Ростиславовна', 'Подотчет на командировочные расходыИсаевой Е.Р.');
+INSERT INTO CLIENT VALUES(18,'Марков Вячеслав Викторович', 'РВПС МАРКОВ ВЯЧЕСЛАВ ВИКТОРОВИЧ № 101 кв(19)-65-12/АЭБ-124');
+
+
+--Создание новой колонки в таблице с форматом ФАМИЛИЯ И. О.:
+
+ALTER TABLE CLIENT 
+ADD (lastname_initials VARCHAR2(50));
+
+
+BEGIN
+   FOR rec IN (SELECT * FROM CLIENT) LOOP
+      UPDATE CLIENT 
+      SET lastname_initials = SUBSTR(rec.fio, 1, INSTR(rec.fio,' ')-1) || ' ' || 
+            SUBSTR(rec.fio, INSTR(rec.fio,' ')+1, 1) || '.' || 
+            SUBSTR(rec.fio, INSTR(rec.fio,' ', INSTR(rec.fio,' ')+1)+1, 1) || '.' 
+      WHERE id_client = rec.id_client;
+   END LOOP;
+END;
+/
+
+--Замена части строки в колонке 'account_name', соответствующей формату Фамилия И.О., на строку из колонки 'lastname_initials'
+
+BEGIN
+  FOR rec IN (SELECT id_client, account_name, lastname_initials 
+              FROM CLIENT)
+  LOOP
+    UPDATE CLIENT 
+    SET account_name = REGEXP_REPLACE(rec.account_name, '[[:alnum:]]+\s[[:alpha:]]\.[[:alpha:]]\.', rec.lastname_initials)
+    WHERE id_client = rec.id_client;
+  END LOOP;
+END;
+/
+
+-- Удаление колонки 'lastname_initials'
+
+BEGIN
+   EXECUTE IMMEDIATE 'ALTER TABLE Client DROP COLUMN lastname_initials';
+END;
+/
+
+
